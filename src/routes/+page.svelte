@@ -1,428 +1,422 @@
-<script>
-    let phone = '';
-    let selectedMode = 'member'; // Default: member
-    const countryCode = '+60';
-    const minLength = 9;
+<script lang="ts">
+  import { fade } from 'svelte/transition';
 
-    function handleDigit(digit) {
-        if (phone.length < 12) {
-            phone += digit;
-        }
+  let activeCategory: 'all' | 'food' | 'beverages' = 'all';
+  let currentPage = 1;
+  const itemsPerPage = 8;
+
+  const menuItems = [
+    { id: 1, category: 'food', name: 'Cheesy Burger', desc: 'Juicy beef patty with melted cheddar cheese', price: 11.99, img: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=800&q=80' },
+    { id: 2, category: 'food', name: 'Spicy Chicken Wings', desc: 'Crispy wings tossed in spicy sauce', price: 7.99, img: 'https://media.istockphoto.com/id/835903320/photo/baked-chicken-wings-with-sesame-seeds-and-sweet-chili-sauce-on-white-wooden-board.jpg?w=800&q=80' },
+    { id: 3, category: 'food', name: 'Classic French Fries', desc: 'Crispy golden fries with dipping sauce', price: 3.21, img: 'https://thumbs.dreamstime.com/b/french-fries-ketchup-mustard-wooden-background-side-dish-traditional-american-food-french-fries-ketchup-mustard-176193582.jpg?w=800&q=80' },
+    { id: 4, category: 'beverages', name: 'Espresso', desc: 'Rich and bold single shot espresso', price: 3.50, img: 'https://media.istockphoto.com/id/1358132613/photo/refreshing-hot-cup-of-coffee-at-a-cafe.jpg?w=800&q=80' },
+    { id: 5, category: 'beverages', name: 'Iced Latte', desc: 'Smooth espresso with cold milk and ice', price: 4.99, img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800&q=80' },
+    { id: 6, category: 'beverages', name: 'Cappuccino', desc: 'Espresso with steamed milk foam and art', price: 4.50, img: 'https://media.istockphoto.com/id/1365835656/photo/a-cup-of-coffee-latte-on-a-wooden-table.jpg?w=800&q=80' },
+    { id: 7, category: 'food', name: 'Grilled Cheese Sandwich', desc: 'Toasted bread with melted cheese', price: 6.99, img: 'https://images.unsplash.com/photo-1559314809-0f31657e9e39?w=800&q=80' },
+    { id: 8, category: 'food', name: 'Chicken Nuggets', desc: 'Crispy golden chicken bites', price: 5.49, img: 'https://images.unsplash.com/photo-1606853731005-19e3b3c32c0a?w=800&q=80' },
+    { id: 9, category: 'beverages', name: 'Hot Chocolate', desc: 'Rich chocolate with marshmallows', price: 4.25, img: 'https://images.unsplash.com/photo-1572492047507-e0e9fa9e4d18?w=800&q=80' },
+    { id: 10, category: 'beverages', name: 'Green Tea', desc: 'Fresh brewed green tea', price: 3.25, img: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&q=80' },
+    { id: 11, category: 'food', name: 'Onion Rings', desc: 'Crispy battered onion rings', price: 4.75, img: 'https://images.unsplash.com/photo-1551218808-94e220e084d0?w=800&q=80' },
+    { id: 12, category: 'food', name: 'Caesar Salad', desc: 'Fresh greens with caesar dressing', price: 8.99, img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80' },
+  ];
+
+  $: filteredItems = menuItems.filter(item =>
+    activeCategory === 'all' || item.category === activeCategory
+  );
+
+  $: totalPages = Math.ceil(filteredItems.length / itemsPerPage);
+
+  $: currentItems = filteredItems.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  $: activeCategory, (currentPage = 1);
+
+  $: pageNumbers = (() => {
+    const pages = [];
+    const maxVisible = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+    if (endPage - startPage + 1 < maxVisible) {
+      startPage = Math.max(1, endPage - maxVisible + 1);
     }
-
-    function handleDelete() {
-        phone = phone.slice(0, -1);
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
     }
+    return pages;
+  })();
 
-    function handleSubmit() {
-        if (phone.length >= minLength || selectedMode === 'non-member') {
-            const fullNumber = countryCode + phone;
-            console.log(`${selectedMode === 'member' ? 'Member' : 'Non-Member'} login attempt:`, fullNumber);
-            // Logic lanjut ke OTP atau cashier mode
-        }
-    }
+  function goToPage(page: number) {
+    if (page >= 1 && page <= totalPages) currentPage = page;
+  }
 
-    $: isValid = phone.length >= minLength;
+  function nextPage() {
+    if (currentPage < totalPages) currentPage += 1;
+  }
+
+  function prevPage() {
+    if (currentPage > 1) currentPage -= 1;
+  }
 </script>
 
-<svelte:head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-</svelte:head>
+<div class="menu-container">
+  <!-- Sidebar Kiri -->
+  <aside class="sidebar">
+    <h1 class="menu-title">Our Menu</h1>
+    <div class="category-tabs-vertical">
+      <button class="tab-button-v" class:active={activeCategory === 'all'} on:click={() => activeCategory = 'all'}>All</button>
+      <button class="tab-button-v" class:active={activeCategory === 'food'} on:click={() => activeCategory = 'food'}>Food</button>
+      <button class="tab-button-v" class:active={activeCategory === 'beverages'} on:click={() => activeCategory = 'beverages'}>Beverages</button>
+    </div>
+  </aside>
 
-<div class="container">
-    <div class="left-side">
-        <div class="login-box">
-
-            <div class="mode-selector">
-                <button
-                    class="mode-btn"
-                    class:active={selectedMode === 'member'}
-                    on:click={() => selectedMode = 'member'}
-                >
-                    Member
-                </button>
-                <button
-                    class="mode-btn"
-                    class:active={selectedMode === 'non-member'}
-                    on:click={() => selectedMode = 'non-member'}
-                >
-                    Non-Member
-                </button>
+  <!-- Grid Menu Kanan -->
+  <div class="menu-content">
+    <div class="menu-grid">
+      {#each currentItems as item (item.id)}
+        <div
+          class="menu-card"
+          in:fade={{ duration: 300 }}
+          out:fade={{ duration: 200 }}
+        >
+          <img src={item.img} alt={item.name} class="menu-image" />
+          <div class="card-content">
+            <h3 class="item-name">{item.name}</h3>
+            <p class="item-desc">{item.desc}</p>
+            <div class="card-footer">
+              <span class="price">${item.price.toFixed(2)}</span>
+              <button class="add-button" aria-label="Add to cart">+</button>
             </div>
-
-            {#if selectedMode === 'member'}
-                <p class="subtitle">Enter your mobile number</p>
-                <div class="phone-display">
-                    <span class="country-code">{countryCode}</span>
-                    <span class="phone-number">{phone || 'xx'}</span>
-                </div>
-
-                <div class="keypad">
-                    {#each [1, 2, 3, 4, 5, 6, 7, 8, 9] as num}
-                        <button class="key" on:click={() => handleDigit(num)}>{num}</button>
-                    {/each}
-                    <div class="key empty"></div>
-                    <button class="key" on:click={() => handleDigit(0)}>0</button>
-                    <button class="key delete" on:click={handleDelete}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/>
-                            <line x1="18" y1="9" x2="12" y2="15"/>
-                            <line x1="12" y1="9" x2="18" y2="15"/>
-                        </svg>
-                    </button>
-                </div>
-
-                <button
-                    class="btn-login"
-                    class:disabled={!isValid}
-                    on:click={handleSubmit}
-                >
-                    Continue
-                </button>
-
-                <p class="signup-text">
-                    Don't have an account? <a href="/signup">Sign up</a>
-                </p>
-            {:else}
-                <div class="non-member-content">
-                    <p class="guest-message">You are logging in as a guest.</p>
-                    <button class="btn-login guest" on:click={handleSubmit}>
-                        Continue as Non-Member
-                    </button>
-                </div>
-            {/if}
+          </div>
         </div>
+      {/each}
     </div>
 
-    <div class="right-side">
-        <div class="image-container">
-            <div class="spotlight-effect"></div>
-            <div class="logo-container">
-                <div class="aw-logo">Generational Coffee & Tea</div>
-            </div>
-        </div>
-    </div>
+    <!-- Pagination -->
+    {#if totalPages > 1}
+      <div class="pagination">
+        <button class="pagination-btn" class:disabled={currentPage === 1} on:click={prevPage} aria-label="Previous page">
+          ←
+        </button>
+
+        {#each pageNumbers as page}
+          {#if page === currentPage}
+            <button class="pagination-btn active">{page}</button>
+          {:else}
+            <button class="pagination-btn" on:click={() => goToPage(page)}>{page}</button>
+          {/if}
+        {/each}
+
+        {#if totalPages > pageNumbers[pageNumbers.length - 1] && pageNumbers.length < totalPages}
+          <span class="ellipsis">...</span>
+        {/if}
+
+        <button class="pagination-btn" class:disabled={currentPage === totalPages} on:click={nextPage} aria-label="Next page">
+          →
+        </button>
+      </div>
+    {/if}
+  </div>
 </div>
 
 <style>
-    :global(body, html) {
-        margin: 0;
-        padding: 0;
-        height: 100%;
-        overflow: hidden;
-        font-family: 'Poppins', sans-serif;
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+  * { font-family: 'Poppins', sans-serif; }
+
+  .menu-container {
+    display: flex;
+    min-height: 100vh;
+    background: #fff;
+  }
+
+  /* Sidebar Kiri */
+  .sidebar {
+    width: 280px;
+    padding: 2rem 1.5rem;
+    border-right: 1px solid #eee;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .menu-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #2d2d2d;
+    margin-bottom: 2rem;
+  }
+
+  .category-tabs-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .tab-button-v {
+    padding: 1rem 1.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    text-align: left;
+    border: none;
+    border-radius: 12px;
+    background-color: #f0f0f0;
+    color: #555;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .tab-button-v:hover {
+    background-color: #e0e0e0;
+  }
+
+  .tab-button-v.active {
+    background-color: #22c55e;
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  }
+
+  /* Content Kanan */
+  .menu-content {
+    flex: 1;
+    padding: 2rem 5%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .menu-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 380px));
+    gap: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+    flex-grow: 1;
+    justify-content: start;
+  }
+
+  .menu-card {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  .menu-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+  }
+
+  .menu-image {
+    width: 100%;
+    height: 240px;
+    object-fit: cover;
+  }
+
+  .card-content {
+    padding: 1.5rem;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .item-name {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: #2d2d2d;
+    margin: 0 0 0.75rem;
+  }
+
+  .item-desc {
+    font-size: 1rem;
+    color: #666;
+    margin: 0 0 auto;
+    line-height: 1.5;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+  }
+
+  .price {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #22c55e;
+  }
+
+  .add-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background-color: #22c55e;
+    color: white;
+    font-size: 1.8rem;
+    font-weight: bold;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .add-button:hover {
+    background-color: #16a34a;
+    transform: scale(1.15);
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 3rem;
+    padding: 1rem 0;
+  }
+
+  .pagination-btn {
+    width: 44px;
+    height: 44px;
+    border: 2px solid #e0e0e0;
+    background: white;
+    color: #666;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .pagination-btn:hover:not(.disabled) {
+    border-color: #22c55e;
+    color: #22c55e;
+    background-color: #f0fdf4;
+  }
+
+  .pagination-btn.active {
+    border-color: #22c55e;
+    background-color: #22c55e;
+    color: white;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+  }
+
+  .pagination-btn.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    color: #ccc;
+  }
+
+  .ellipsis {
+    color: #999;
+    font-size: 1.1rem;
+    padding: 0 1rem;
+  }
+
+  /* Responsive */
+  @media (max-width: 992px) {
+    .menu-container {
+      flex-direction: column;
     }
-
-    .container {
-        display: flex;
-        flex-direction: row;
-        height: 100vh;
-        width: 100%;
+    .sidebar {
+      width: 100%;
+      height: auto;
+      position: static;
+      border-right: none;
+      border-bottom: 1px solid #eee;
+      padding: 1.5rem 5%;
     }
-
-    .left-side {
-        flex: 1;
-        background-color: white;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        padding: 40px 20px;
+    .category-tabs-vertical {
+      flex-direction: row;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
-
-    .login-box {
-        width: 100%;
-        max-width: 380px;
-        text-align: center;
+    .tab-button-v {
+      padding: 0.8rem 1.8rem;
+      font-size: 1rem;
     }
-
-    .mode-selector {
-        display: flex;
-        background: #f0f0f0;
-        border-radius: 50px;
-        padding: 6px;
-        margin-bottom: 40px;
-        width: fit-content;
-        margin-left: auto;
-        margin-right: auto;
-        box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+    .menu-content {
+      padding: 2rem 5%;
     }
+  }
 
-    .mode-btn {
-        padding: 10px 32px;
-        border: none;
-        border-radius: 50px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: transparent;
-        color: #666;
+  @media (max-width: 768px) {
+    .menu-grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1.2rem;
+      justify-content: center;
     }
-
-    .mode-btn.active {
-        background: #000;
-        color: white;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    .menu-card {
+      max-width: none;
     }
-
-    .subtitle {
-        color: #000;
-        font-size: 16px;
-        margin-bottom: 40px;
-        opacity: 0.8;
+    .menu-image {
+      height: 160px;
     }
-
-    .phone-display {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 48px;
-        font-size: 32px;
-        font-weight: 500;
+    .card-content {
+      padding: 1rem;
     }
-
-    .country-code {
-        color: #000;
-        opacity: 0.9;
+    .item-name {
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
     }
-
-    .phone-number {
-        letter-spacing: 4px;
-        color: #000;
-        opacity: 0.8;
+    .item-desc {
+      font-size: 0.9rem;
+      line-height: 1.3;
+      margin-bottom: 0.8rem;
     }
-
-    .keypad {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 20px;
-        max-width: 300px;
-        margin: 0 auto 40px auto;
+    .card-footer {
+      margin-top: 0.8rem;
     }
-
-    .key {
-        aspect-ratio: 1;
-        border-radius: 20px;
-        border: none;
-        font-size: 28px;
-        font-weight: 500;
-        color: #333;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: rgba(255, 255, 255, 0.25);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.3);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    .price {
+      font-size: 1.25rem;
     }
-
-    .key:hover { 
-        transform: translateY(-6px); 
-        background: rgba(255, 255, 255, 0.4); 
-        box-shadow: 0 15px 35px rgba(0, 195, 255, 0.2); 
+    .add-button {
+      width: 40px;
+      height: 40px;
+      font-size: 1.4rem;
     }
-
-    .key:active { transform: translateY(-2px); }
-
-    .key.delete { 
-        color: #ff6b6b; 
-        display: flex; 
-        align-items: center; 
-        justify-content: center; 
+    .pagination {
+      margin-top: 2rem;
+      gap: 0.4rem;
     }
-
-    .key.empty { 
-        background: transparent; 
-        border: none; 
-        box-shadow: none; 
-        cursor: default; 
+    .pagination-btn {
+      width: 36px;
+      height: 36px;
+      font-size: 0.9rem;
     }
+  }
 
-    .btn-login {
-        width: 100%;
-        padding: 18px;
-        background: linear-gradient(to right, #00c3ff, #007bff);
-        color: white;
-        border: none;
-        border-radius: 50px;
-        font-size: 18px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
+  @media (max-width: 480px) {
+    .menu-grid {
+      gap: 1rem;
     }
-
-    .btn-login.guest {
-        background: #333;
+    .menu-image {
+      height: 150px;
     }
-
-    .btn-login.disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+    .card-content {
+      padding: 0.9rem;
     }
-
-    .btn-login:hover:not(.disabled) {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 30px rgba(0, 123, 255, 0.4);
+    .item-name {
+      font-size: 1.05rem;
     }
-
-    .non-member-content {
-        margin-top: 60px;
+    .price {
+      font-size: 1.2rem;
     }
-
-    .guest-message {
-        font-size: 18px;
-        color: #000;
-        margin-bottom: 40px;
-        opacity: 0.9;
+    .add-button {
+      width: 38px;
+      height: 38px;
     }
-
-    .signup-text {
-        margin-top: 40px;
-        color: #000;
-        font-size: 15px;
-        opacity: 0.8;
-    }
-
-    .signup-text a {
-        color: #00c3ff;
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .signup-text a:hover { text-decoration: underline; }
-
-    .right-side {
-        flex: 1;
-        background: #f8f8f8;
-        position: relative;
-        overflow: hidden;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .image-container {
-        position: relative;
-        width: 90%;
-        height: 90%;
-        border-radius: 30px;
-        overflow: hidden;
-        background: url('https://images.unsplash.com/photo-1559925393-8be0ec4767c8?ixlib=rb-4.0.3&auto=format&fit=crop&w=2942&q=80') center/cover no-repeat;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-    }
-
-    .spotlight-effect {
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0.2) 30%, rgba(0,0,0,0.1) 70%, rgba(0,0,0,0.3) 100%);
-        z-index: 1;
-    }
-
-    .logo-container {
-        position: absolute;
-        bottom: 40px;
-        right: 40px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-end;
-        z-index: 3;
-    }
-
-    .aw-logo {
-        font-size: 60px;
-        font-weight: bold;
-        color: white;
-        text-shadow: 0 2px 10px rgba(0,0,0,0.4);
-    }
-
-    @media (max-width: 1024px) {
-        .container {
-            flex-direction: column;
-        }
-
-        .left-side {
-            flex: 1;
-            padding: 60px 20px;
-        }
-
-        .right-side {
-            flex: 1;
-            min-height: 40vh;
-        }
-
-        .aw-logo {
-            font-size: 48px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .right-side {
-            display: none;
-        }
-
-        .left-side {
-            padding: 40px 20px;
-        }
-
-        .phone-display {
-            font-size: 28px;
-        }
-
-        .keypad {
-            gap: 15px;
-            max-width: 280px;
-        }
-
-        .key {
-            font-size: 24px;
-        }
-
-        .mode-btn {
-            padding: 8px 24px;
-            font-size: 15px;
-        }
-
-        .aw-logo {
-            font-size: 40px;
-        }
-
-        .subtitle, .guest-message {
-            font-size: 15px;
-        }
-
-        .btn-login {
-            padding: 16px;
-            font-size: 17px;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .login-box {
-            max-width: 100%;
-            padding: 0 10px;
-        }
-
-        .phone-display {
-            font-size: 24px;
-        }
-
-        .keypad {
-            gap: 12px;
-        }
-
-        .key {
-            font-size: 22px;
-        }
-
-        .mode-selector {
-            margin-bottom: 30px;
-        }
-
-        .aw-logo {
-            font-size: 36px;
-        }
-    }
+  }
 </style>
