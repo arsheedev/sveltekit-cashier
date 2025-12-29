@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
+	import type { PageProps } from './$types';
 
-	const voucher = $derived(page.data.voucher);
-	const form = $derived(page.form ?? {});
+	const { data, form }: PageProps = $props();
 
 	let loading = $state(false);
 
@@ -11,9 +10,9 @@
 	let toastType = $state<'success' | 'error' | null>(null);
 
 	$effect(() => {
-		if (form.success && form.message) {
+		if (form?.message) {
 			showToast(form.message, 'success');
-		} else if (form.message) {
+		} else if (form?.message) {
 			showToast(form.message, 'error');
 		}
 	});
@@ -57,16 +56,20 @@
 						type="text"
 						required
 						placeholder="e.g. WELCOME50"
-						value={form.code ?? voucher.code}
+						value={data.voucher.code}
 					/>
 				</div>
 
 				<div class="field">
 					<label>Voucher Type <span class="required">*</span></label>
 					<select name="type" required>
-						<option value="fixed" selected={voucher.type === 'fixed' || form.type === 'fixed'}>Fixed Amount</option>
-						<option value="percentage" selected={voucher.type === 'percentage' || form.type === 'percentage'}>Percentage (%)</option>
-						<option value="manual_upgrade" selected={voucher.type === 'manual_upgrade' || form.type === 'manual_upgrade'}>Manual Upgrade</option>
+						<option value="fixed" selected={data.voucher.type === 'fixed'}>Fixed Amount</option>
+						<option value="percentage" selected={data.voucher.type === 'percentage'}
+							>Percentage (%)</option
+						>
+						<option value="manual_upgrade" selected={data.voucher.type === 'manual_upgrade'}
+							>Manual Upgrade</option
+						>
 					</select>
 				</div>
 
@@ -77,7 +80,7 @@
 						type="number"
 						min="0"
 						placeholder="e.g. 50000 or 15"
-						value={form.discountValue ?? voucher.discountValue ?? ''}
+						value={data.voucher.discountValue ?? ''}
 					/>
 				</div>
 
@@ -88,7 +91,7 @@
 						type="number"
 						min="0"
 						placeholder="0"
-						value={form.pointsRequired ?? voucher.pointsRequired ?? '0'}
+						value={data.voucher.pointsRequired ?? '0'}
 					/>
 				</div>
 			</div>
@@ -100,7 +103,8 @@
 					rows="5"
 					required
 					placeholder="Describe the benefits, terms, and validity..."
-				>{form.description ?? voucher.description}</textarea>
+					>{data.voucher.description}</textarea
+				>
 			</div>
 
 			<div class="actions">
@@ -122,12 +126,26 @@
 	<div class="toast {toastType}">
 		<div class="toast-content">
 			{#if toastType === 'success'}
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
 					<polyline points="22 4 12 14.01 9 11.01"></polyline>
 				</svg>
 			{:else}
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<circle cx="12" cy="12" r="10"></circle>
 					<line x1="12" y1="8" x2="12" y2="12"></line>
 					<line x1="12" y1="16" x2="12.01" y2="16"></line>

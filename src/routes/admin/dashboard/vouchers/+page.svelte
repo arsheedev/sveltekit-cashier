@@ -1,12 +1,9 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import type { PageProps } from './$types';
 
-	const data = $derived(page.data);
-	const vouchers = $derived(data.vouchers || []);
-	const pagination = $derived(data.pagination || {});
-	const error = $derived(data.error);
+	const { data }: PageProps = $props();
 
 	// Toast state
 	let toastMessage = $state<string | null>(null);
@@ -18,8 +15,6 @@
 			showToast(page.form.message, 'success');
 		} else if (page.form?.message) {
 			showToast(page.form.message, 'error');
-		} else if (error) {
-			showToast(error, 'error');
 		}
 	});
 
@@ -60,7 +55,14 @@
 				<p class="subtitle">All discount codes and promotions</p>
 			</div>
 			<a href="/admin/dashboard/vouchers/add" class="btn-primary add-btn">
-				<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<line x1="12" y1="5" x2="12" y2="19"></line>
 					<line x1="5" y1="12" x2="19" y2="12"></line>
 				</svg>
@@ -82,48 +84,74 @@
 					</tr>
 				</thead>
 				<tbody>
-					{#if vouchers.length === 0}
+					{#if data.vouchers.length === 0}
 						<tr>
 							<td colspan="6" class="empty-state">
 								<div class="empty-icon">📋</div>
 								<p>No vouchers available yet</p>
-								<a href="/admin/dashboard/vouchers/add" class="btn-primary" style="margin-top: 24px;">
+								<a
+									href="/admin/dashboard/vouchers/add"
+									class="btn-primary"
+									style="margin-top: 24px;"
+								>
 									Add Your First Voucher
 								</a>
 							</td>
 						</tr>
 					{:else}
-						{#each vouchers as voucher (voucher.id)}
+						{#each data.vouchers as voucher (voucher.id)}
 							<tr>
 								<td><div class="code-badge">{voucher.code}</div></td>
 								<td><span class="type-badge {voucher.type}">{getTypeLabel(voucher.type)}</span></td>
-								<td><strong>{formatCurrency(voucher.discountValue)}</strong></td>
+								<td><strong>{formatCurrency(voucher.discountValue as number)}</strong></td>
 								<td>{voucher.pointsRequired || 0}</td>
 								<td class="description-cell">{voucher.description}</td>
 								<td>
 									<div class="action-buttons">
-										<a href={`/admin/dashboard/vouchers/edit/${voucher.id}`} class="btn-edit" title="Edit">
-											<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<a
+											href={`/admin/dashboard/vouchers/edit?id=${voucher.id}`}
+											class="btn-edit"
+											title="Edit"
+										>
+											<svg
+												width="18"
+												height="18"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="currentColor"
+												stroke-width="2"
+											>
 												<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
 												<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
 											</svg>
 										</a>
 
-										<form method="POST" action="?/delete" use:enhance>
+										<form method="POST" use:enhance>
 											<input type="hidden" name="id" value={voucher.id} />
 											<button
 												type="submit"
 												class="btn-delete"
 												title="Delete"
 												onclick={(e) => {
-													if (!confirm('Are you sure you want to delete this voucher permanently?')) {
+													if (
+														!confirm('Are you sure you want to delete this voucher permanently?')
+													) {
 														e.preventDefault();
 													}
 												}}
 											>
-												<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+												<svg
+													width="18"
+													height="18"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="currentColor"
+													stroke-width="2"
+												>
 													<path d="M3 6h18"></path>
-													<path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+													<path
+														d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
+													></path>
 												</svg>
 											</button>
 										</form>
@@ -135,22 +163,6 @@
 				</tbody>
 			</table>
 		</div>
-
-		{#if pagination.totalPages > 1}
-			<div class="pagination">
-				<button class="page-btn" disabled={pagination.current === 1} onclick={() => goto(`?page=${pagination.current - 1}`)}>
-					Previous
-				</button>
-				{#each Array(pagination.totalPages) as _, i}
-					<button class="page-btn {pagination.current === i + 1 ? 'active' : ''}" onclick={() => goto(`?page=${i + 1}`)}>
-						{i + 1}
-					</button>
-				{/each}
-				<button class="page-btn" disabled={pagination.current === pagination.totalPages} onclick={() => goto(`?page=${pagination.current + 1}`)}>
-					Next
-				</button>
-			</div>
-		{/if}
 	</div>
 </div>
 
@@ -159,12 +171,26 @@
 	<div class="toast {toastType}">
 		<div class="toast-content">
 			{#if toastType === 'success'}
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
 					<polyline points="22 4 12 14.01 9 11.01"></polyline>
 				</svg>
 			{:else}
-				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+				<svg
+					width="24"
+					height="24"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
 					<circle cx="12" cy="12" r="10"></circle>
 					<line x1="12" y1="8" x2="12" y2="12"></line>
 					<line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -177,11 +203,15 @@
 {/if}
 
 <style>
-	
 	:global(body) {
 		margin: 0;
 		padding: 0;
-		font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+		font-family:
+			'Inter',
+			-apple-system,
+			BlinkMacSystemFont,
+			'Segoe UI',
+			sans-serif;
 		background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
 		min-height: 100vh;
 	}
@@ -257,8 +287,16 @@
 		box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 	}
 
-	.alert.success { background: #ecfdf5; color: #065f46; border: 2px solid #86efac; }
-	.alert.error { background: #fef2f2; color: #991b1b; border: 2px solid #fca5a5; }
+	.alert.success {
+		background: #ecfdf5;
+		color: #065f46;
+		border: 2px solid #86efac;
+	}
+	.alert.error {
+		background: #fef2f2;
+		color: #991b1b;
+		border: 2px solid #fca5a5;
+	}
 
 	.table-container {
 		overflow-x: auto;
@@ -312,9 +350,18 @@
 		letter-spacing: 0.5px;
 	}
 
-	.type-badge.fixed { background: #dcfce7; color: #065f46; }
-	.type-badge.percentage { background: #fef3c7; color: #d97706; }
-	.type-badge.manual_upgrade { background: #dbeafe; color: #1e40af; }
+	.type-badge.fixed {
+		background: #dcfce7;
+		color: #065f46;
+	}
+	.type-badge.percentage {
+		background: #fef3c7;
+		color: #d97706;
+	}
+	.type-badge.manual_upgrade {
+		background: #dbeafe;
+		color: #1e40af;
+	}
 
 	.description-cell {
 		max-width: 300px;
@@ -327,7 +374,8 @@
 		gap: 8px;
 	}
 
-	.btn-edit, .btn-delete {
+	.btn-edit,
+	.btn-delete {
 		width: 44px;
 		height: 44px;
 		border: none;
@@ -344,14 +392,20 @@
 		color: #065f46;
 	}
 
-	.btn-edit:hover { background: #86efac; transform: translateY(-2px); }
+	.btn-edit:hover {
+		background: #86efac;
+		transform: translateY(-2px);
+	}
 
 	.btn-delete {
 		background: #fee2e2;
 		color: #dc2626;
 	}
 
-	.btn-delete:hover { background: #fecaca; transform: translateY(-2px); }
+	.btn-delete:hover {
+		background: #fecaca;
+		transform: translateY(-2px);
+	}
 
 	.empty-state {
 		text-align: center;
@@ -405,11 +459,27 @@
 	}
 
 	@media (max-width: 768px) {
-		.wrapper { padding: 16px; }
-		.card { padding: 32px 24px; border-radius: 20px; }
-		.header { flex-direction: column; text-align: center; }
-		.voucher-table th, .voucher-table td { padding: 16px 12px; font-size: 14px; }
-		.action-buttons { justify-content: center; }
-		.pagination { flex-wrap: wrap; }
+		.wrapper {
+			padding: 16px;
+		}
+		.card {
+			padding: 32px 24px;
+			border-radius: 20px;
+		}
+		.header {
+			flex-direction: column;
+			text-align: center;
+		}
+		.voucher-table th,
+		.voucher-table td {
+			padding: 16px 12px;
+			font-size: 14px;
+		}
+		.action-buttons {
+			justify-content: center;
+		}
+		.pagination {
+			flex-wrap: wrap;
+		}
 	}
 </style>
