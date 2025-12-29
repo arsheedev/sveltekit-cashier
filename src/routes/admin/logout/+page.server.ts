@@ -1,8 +1,9 @@
-import { redirect } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
+import { redirect, type Actions } from '@sveltejs/kit';
 
-export const load: PageServerLoad = async ({ cookies }) => {
-	cookies.delete('token', { path: '/' });
+export const actions: Actions = {
+	default: ({ cookies }) => {
+		cookies.delete('token', { path: '/' });
 
-	return redirect(302, '/admin/login');
+		return redirect(302, '/admin/login');
+	}
 };
