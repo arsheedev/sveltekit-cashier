@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { page } from '$app/state';
 	import { enhance } from '$app/forms';
+	import type { PageProps } from './$types';
 
-	const form = $derived(page.data.form ?? {});
+	const { form }: PageProps = $props();
+
 	let loading = $state(false);
 </script>
 
@@ -17,13 +18,15 @@
 			<p class="subtitle">Create a special discount code for your loyal customers</p>
 		</div>
 
-		{#if form.success}
+		{#if form?.success}
 			<div class="alert success">
-				<strong>Success!</strong> {form.message}
+				<strong>Success!</strong>
+				{form.message}
 			</div>
-		{:else if form.message}
+		{:else if form?.message}
 			<div class="alert error">
-				<strong>Error:</strong> {form.message}
+				<strong>Error:</strong>
+				{form.message}
 			</div>
 		{/if}
 
@@ -40,45 +43,27 @@
 			<div class="grid">
 				<div class="field">
 					<label>Voucher Code <span class="required">*</span></label>
-					<input
-						name="code"
-						type="text"
-						required
-						placeholder="e.g. WELCOME50"
-						value={form.code ?? ''}
-					/>
+					<input name="code" type="text" required placeholder="e.g. WELCOME50" />
 				</div>
 
 				<div class="field">
 					<label>Voucher Type <span class="required">*</span></label>
 					<select name="type" required>
 						<option value="" disabled selected>Select type</option>
-						<option value="fixed" selected={form.type === 'fixed'}>Fixed Amount</option>
-						<option value="percentage" selected={form.type === 'percentage'}>Percentage (%)</option>
-						<option value="manual_upgrade" selected={form.type === 'manual_upgrade'}>Manual Upgrade</option>
+						<option value="fixed">Fixed Amount</option>
+						<option value="percentage">Percentage (%)</option>
+						<option value="manual_upgrade">Manual Upgrade</option>
 					</select>
 				</div>
 
 				<div class="field">
 					<label>Discount Value <small>(optional)</small></label>
-					<input
-						name="discountValue"
-						type="number"
-						min="0"
-						placeholder="e.g. 50000 or 15"
-						value={form.discountValue ?? ''}
-					/>
+					<input name="discountValue" type="number" min="0" placeholder="e.g. 50000 or 15" />
 				</div>
 
 				<div class="field">
 					<label>Points Required</label>
-					<input
-						name="pointsRequired"
-						type="number"
-						min="0"
-						placeholder="0"
-						value={form.pointsRequired ?? '0'}
-					/>
+					<input name="pointsRequired" type="number" min="0" placeholder="0" />
 				</div>
 			</div>
 
@@ -89,7 +74,7 @@
 					rows="5"
 					required
 					placeholder="Describe the benefits, terms, and validity period of this voucher..."
-				>{form.description ?? ''}</textarea>
+				></textarea>
 			</div>
 
 			<div class="actions">
@@ -295,7 +280,9 @@
 	}
 
 	@keyframes spin {
-		to { transform: rotate(360deg); }
+		to {
+			transform: rotate(360deg);
+		}
 	}
 
 	@media (max-width: 640px) {
@@ -310,7 +297,8 @@
 		.actions {
 			flex-direction: column;
 		}
-		.btn-primary, .btn-secondary {
+		.btn-primary,
+		.btn-secondary {
 			width: 100%;
 		}
 	}
