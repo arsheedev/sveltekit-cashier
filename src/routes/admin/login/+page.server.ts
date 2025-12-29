@@ -34,8 +34,8 @@ export const actions: Actions = {
 			return fail(400, { message: res.message });
 		}
 
-		cookies.set('token', res.token, { path: '/' });
+		cookies.set('token', res.token, { path: '/', maxAge: 60 * 60 });
 
-		return redirect(302, '/admin/dashboard');
+		return redirect(301, '/admin/dashboard');
 	}
 };
