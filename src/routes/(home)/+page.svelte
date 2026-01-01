@@ -1,422 +1,570 @@
 <script lang="ts">
-  import { fade } from 'svelte/transition';
+  import { fade, slide } from 'svelte/transition';
+  import type { PageData } from './$types';
 
-  let activeCategory: 'all' | 'food' | 'beverages' = 'all';
-  let currentPage = 1;
+  let creatingSession = $state(false);
+
+async function createCheckoutSession() {
+  if (cart.length === 0) {
+    alert('Your cart is empty!');
+    return;
+  }
+
+  creatingSession = true;
+
+  try {
+    const res = await fetch('/api/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cart })
+    });
+
+    const data = await res.json();
+
+    if (data.url) {
+      window.location.href = data.url; 
+    } else {
+      alert('Error: ' + (data.error || 'Payment failed. Please try again.'));
+    }
+  } catch (err) {
+    console.error('Checkout error:', err);
+    alert('Network error. Please check your connection and try again.');
+  } finally {
+    creatingSession = false;
+  }
+}
+
+  let { data }: PageData = $props();
+  const products = data.products || [];
+
+  let activeCategory = $state<'all' | 'food' | 'beverages'>('all');
+  let currentPage = $state(1);
+  let searchQuery = $state('');
   const itemsPerPage = 8;
 
-  const menuItems = [
-    { id: 1, category: 'food', name: 'Cheesy Burger', desc: 'Juicy beef patty with melted cheddar cheese', price: 11.99, img: 'https://images.unsplash.com/photo-1572802419224-296b0aeee0d9?w=800&q=80' },
-    { id: 2, category: 'food', name: 'Spicy Chicken Wings', desc: 'Crispy wings tossed in spicy sauce', price: 7.99, img: 'https://media.istockphoto.com/id/835903320/photo/baked-chicken-wings-with-sesame-seeds-and-sweet-chili-sauce-on-white-wooden-board.jpg?w=800&q=80' },
-    { id: 3, category: 'food', name: 'Classic French Fries', desc: 'Crispy golden fries with dipping sauce', price: 3.21, img: 'https://thumbs.dreamstime.com/b/french-fries-ketchup-mustard-wooden-background-side-dish-traditional-american-food-french-fries-ketchup-mustard-176193582.jpg?w=800&q=80' },
-    { id: 4, category: 'beverages', name: 'Espresso', desc: 'Rich and bold single shot espresso', price: 3.50, img: 'https://media.istockphoto.com/id/1358132613/photo/refreshing-hot-cup-of-coffee-at-a-cafe.jpg?w=800&q=80' },
-    { id: 5, category: 'beverages', name: 'Iced Latte', desc: 'Smooth espresso with cold milk and ice', price: 4.99, img: 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=800&q=80' },
-    { id: 6, category: 'beverages', name: 'Cappuccino', desc: 'Espresso with steamed milk foam and art', price: 4.50, img: 'https://media.istockphoto.com/id/1365835656/photo/a-cup-of-coffee-latte-on-a-wooden-table.jpg?w=800&q=80' },
-    { id: 7, category: 'food', name: 'Grilled Cheese Sandwich', desc: 'Toasted bread with melted cheese', price: 6.99, img: 'https://images.unsplash.com/photo-1559314809-0f31657e9e39?w=800&q=80' },
-    { id: 8, category: 'food', name: 'Chicken Nuggets', desc: 'Crispy golden chicken bites', price: 5.49, img: 'https://images.unsplash.com/photo-1606853731005-19e3b3c32c0a?w=800&q=80' },
-    { id: 9, category: 'beverages', name: 'Hot Chocolate', desc: 'Rich chocolate with marshmallows', price: 4.25, img: 'https://images.unsplash.com/photo-1572492047507-e0e9fa9e4d18?w=800&q=80' },
-    { id: 10, category: 'beverages', name: 'Green Tea', desc: 'Fresh brewed green tea', price: 3.25, img: 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=800&q=80' },
-    { id: 11, category: 'food', name: 'Onion Rings', desc: 'Crispy battered onion rings', price: 4.75, img: 'https://images.unsplash.com/photo-1551218808-94e220e084d0?w=800&q=80' },
-    { id: 12, category: 'food', name: 'Caesar Salad', desc: 'Fresh greens with caesar dressing', price: 8.99, img: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80' },
-  ];
+  // CART STATE
+  type CartItem = {
+    id: number;
+    name: string;
+    price: number;
+    quantity: number;
+    imageUrl: string;
+  };
 
-  $: filteredItems = menuItems.filter(item =>
-    activeCategory === 'all' || item.category === activeCategory
+  let cart = $state<CartItem[]>([]);
+  let showCartPopup = $state(false);
+
+  let cartTotalItems = $derived(
+    cart.reduce((sum, item) => sum + item.quantity, 0)
   );
 
-  $: totalPages = Math.ceil(filteredItems.length / itemsPerPage);
-
-  $: currentItems = filteredItems.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  let cartTotalPrice = $derived(
+    cart.reduce((sum, item) => sum + item.price * item.quantity, 0)
   );
 
-  $: activeCategory, (currentPage = 1);
+  function addToCart(product: typeof products[0]) {
+    const existing = cart.find(item => item.id === product.id);
+    if (existing) {
+      existing.quantity += 1;
+    } else {
+      cart = [...cart, {
+        id: product.id,
+        name: product.name,
+        price: product.price,
+        quantity: 1,
+        imageUrl: product.imageUrl || ''
+      }];
+    }
+  }
 
-  $: pageNumbers = (() => {
-    const pages = [];
+  function updateQuantity(id: number, delta: number) {
+    const item = cart.find(i => i.id === id);
+    if (item) {
+      item.quantity += delta;
+      if (item.quantity <= 0) cart = cart.filter(i => i.id !== id);
+    }
+  }
+
+  function toggleCart() {
+    showCartPopup = !showCartPopup;
+  }
+
+  function clearSearch() {
+    searchQuery = '';
+  }
+
+  let filteredItems = $derived(
+    products.filter(item => {
+      const matchesCategory = activeCategory === 'all' || item.type === activeCategory;
+      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    })
+  );
+
+  let totalPages = $derived(Math.ceil(filteredItems.length / itemsPerPage));
+
+  let currentItems = $derived(
+    filteredItems.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    )
+  );
+
+  let pageNumbers = $derived(() => {
+    const pages: number[] = [];
     const maxVisible = 5;
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisible / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-    if (endPage - startPage + 1 < maxVisible) {
-      startPage = Math.max(1, endPage - maxVisible + 1);
-    }
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
+    let start = Math.max(1, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages, start + maxVisible - 1);
+    if (end - start + 1 < maxVisible) start = Math.max(1, end - maxVisible + 1);
+    for (let i = start; i <= end; i++) pages.push(i);
     return pages;
-  })();
+  });
+
+  $effect(() => {
+    activeCategory || searchQuery;
+    currentPage = 1;
+  });
 
   function goToPage(page: number) {
     if (page >= 1 && page <= totalPages) currentPage = page;
   }
-
-  function nextPage() {
-    if (currentPage < totalPages) currentPage += 1;
-  }
-
-  function prevPage() {
-    if (currentPage > 1) currentPage -= 1;
-  }
 </script>
 
+<svelte:head>
+  <title>Menu | Order Food & Beverages</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</svelte:head>
+
 <div class="menu-container">
-  <!-- Sidebar Kiri -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <h1 class="menu-title">Our Menu</h1>
     <div class="category-tabs-vertical">
-      <button class="tab-button-v" class:active={activeCategory === 'all'} on:click={() => activeCategory = 'all'}>All</button>
-      <button class="tab-button-v" class:active={activeCategory === 'food'} on:click={() => activeCategory = 'food'}>Food</button>
-      <button class="tab-button-v" class:active={activeCategory === 'beverages'} on:click={() => activeCategory = 'beverages'}>Beverages</button>
+      <button class="tab-button-v" class:active={activeCategory === 'all'} onclick={() => activeCategory = 'all'}>
+        All Items
+      </button>
+      <button class="tab-button-v" class:active={activeCategory === 'food'} onclick={() => activeCategory = 'food'}>
+        Food
+      </button>
+      <button class="tab-button-v" class:active={activeCategory === 'beverages'} onclick={() => activeCategory = 'beverages'}>
+        Beverages
+      </button>
     </div>
   </aside>
 
-  <!-- Grid Menu Kanan -->
+  <!-- Main Content -->
   <div class="menu-content">
-    <div class="menu-grid">
-      {#each currentItems as item (item.id)}
-        <div
-          class="menu-card"
-          in:fade={{ duration: 300 }}
-          out:fade={{ duration: 200 }}
-        >
-          <img src={item.img} alt={item.name} class="menu-image" />
-          <div class="card-content">
-            <h3 class="item-name">{item.name}</h3>
-            <p class="item-desc">{item.desc}</p>
-            <div class="card-footer">
-              <span class="price">${item.price.toFixed(2)}</span>
-              <button class="add-button" aria-label="Add to cart">+</button>
+    <!-- Search Bar -->
+    <div class="search-bar">
+      <div class="search-input-wrapper">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input type="text" placeholder="Search menu items..." bind:value={searchQuery} class="search-input" />
+        {#if searchQuery}
+          <button class="clear-search-btn" onclick={clearSearch} aria-label="Clear search">×</button>
+        {/if}
+      </div>
+    </div>
+
+    {#if currentItems.length === 0}
+      <div class="empty-state">
+        <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+          <circle cx="60" cy="60" r="60" fill="#f0fdf4"/>
+          <path d="M60 35L80 60H40L60 35Z" fill="#22c55e"/>
+          <path d="M50 85H70V105H50V85Z" fill="#22c55e"/>
+        </svg>
+        <h3>No items found</h3>
+        <p>{searchQuery ? 'Try a different search term' : 'Try selecting a different category'}</p>
+      </div>
+    {:else}
+      <div class="stats-bar">
+        <span class="stats-text">
+          Showing {((currentPage - 1) * itemsPerPage) + 1} -
+          {Math.min(currentPage * itemsPerPage, filteredItems.length)} 
+          of {filteredItems.length} items
+          {searchQuery ? ` for "${searchQuery}"` : ''}
+        </span>
+      </div>
+
+      <div class="menu-grid">
+        {#each currentItems as item (item.id)}
+          <div class="menu-card" in:fade={{ duration: 300 }}>
+            <div class="image-wrapper">
+              {#if item.imageUrl}
+                <img src={item.imageUrl} alt={item.name} class="menu-image" loading="lazy" />
+              {:else}
+                <div class="placeholder-image">
+                  <svg width="80" height="80" viewBox="0 0 120 120" fill="none">
+                    <rect width="120" height="120" rx="16" fill="#f3f4f6"/>
+                    <text x="60" y="75" text-anchor="middle" fill="#9ca3af" font-size="14" font-weight="500">No Image</text>
+                  </svg>
+                </div>
+              {/if}
             </div>
+
+            <div class="card-content">
+              <h3 class="item-name">{item.name}</h3>
+              <span class="type-badge">{item.type}</span>
+              <div class="card-footer">
+                <span class="price">SGD {item.price.toFixed(2)}</span>
+                <button class="add-button" onclick={() => addToCart(item)} aria-label="Add {item.name} to cart">
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+
+      {#if totalPages > 1}
+        <div class="pagination">
+          <button class="pagination-btn" class:disabled={currentPage === 1} onclick={() => currentPage -= 1}>←</button>
+          {#each pageNumbers as page}
+            <button class="pagination-btn {page === currentPage ? 'active' : ''}" onclick={() => goToPage(page)}>
+              {page}
+            </button>
+          {/each}
+          {#if totalPages > pageNumbers[pageNumbers.length - 1]}
+            <span class="ellipsis">...</span>
+          {/if}
+          <button class="pagination-btn" class:disabled={currentPage === totalPages} onclick={() => currentPage += 1}>→</button>
+        </div>
+      {/if}
+    {/if}
+  </div>
+</div>
+
+<!-- Floating Cart Button -->
+{#if cartTotalItems > 0}
+  <button class="floating-cart-btn" onclick={toggleCart} aria-label="Open cart">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="9" cy="21" r="1"/>
+      <circle cx="20" cy="21" r="1"/>
+      <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/>
+    </svg>
+    <span class="cart-badge">{cartTotalItems}</span>
+  </button>
+{/if}
+
+<!-- Cart Popup dari Bawah -->
+{#if showCartPopup}
+  <div class="cart-overlay" onclick={() => showCartPopup = false} transition:fade={{ duration: 200 }}></div>
+  <div class="cart-popup" transition:slide={{ duration: 300 }}>
+    <div class="cart-header-popup">
+      <h2>Your Cart ({cartTotalItems} items)</h2>
+      <button class="close-btn" onclick={() => showCartPopup = false} aria-label="Close cart">×</button>
+    </div>
+
+    <div class="cart-items">
+      {#each cart as item (item.id)}
+        <div class="cart-item">
+          {#if item.imageUrl}
+            <img src={item.imageUrl} alt={item.name} class="cart-item-image" />
+          {:else}
+            <div class="cart-item-placeholder">
+              <svg width="40" height="40" viewBox="0 0 120 120" fill="none">
+                <rect width="120" height="120" rx="8" fill="#f3f4f6"/>
+                <text x="60" y="75" text-anchor="middle" fill="#9ca3af" font-size="12">No Image</text>
+              </svg>
+            </div>
+          {/if}
+          <div class="cart-item-info">
+            <h4>{item.name}</h4>
+            <span class="cart-item-price">SGD {item.price.toFixed(2)} each</span>
+          </div>
+          <div class="quantity-control">
+            <button onclick={() => updateQuantity(item.id, -1)}>-</button>
+            <span>{item.quantity}</span>
+            <button onclick={() => updateQuantity(item.id, 1)}>+</button>
           </div>
         </div>
       {/each}
     </div>
 
-    <!-- Pagination -->
-    {#if totalPages > 1}
-      <div class="pagination">
-        <button class="pagination-btn" class:disabled={currentPage === 1} on:click={prevPage} aria-label="Previous page">
-          ←
-        </button>
+    <div class="cart-total-popup">
+      <span>Total</span>
+      <span class="total-price">SGD {cartTotalPrice.toFixed(2)}</span>
+    </div>
 
-        {#each pageNumbers as page}
-          {#if page === currentPage}
-            <button class="pagination-btn active">{page}</button>
-          {:else}
-            <button class="pagination-btn" on:click={() => goToPage(page)}>{page}</button>
-          {/if}
-        {/each}
-
-        {#if totalPages > pageNumbers[pageNumbers.length - 1] && pageNumbers.length < totalPages}
-          <span class="ellipsis">...</span>
-        {/if}
-
-        <button class="pagination-btn" class:disabled={currentPage === totalPages} on:click={nextPage} aria-label="Next page">
-          →
-        </button>
-      </div>
-    {/if}
+    <button class="checkout-btn-popup" onclick={createCheckoutSession} disabled={creatingSession || cart.length === 0}>
+  {creatingSession ? 'Processing...' : 'Proceed to Checkout'}
+</button>
   </div>
-</div>
+{/if}
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-  * { font-family: 'Poppins', sans-serif; }
+  :global(body) { margin: 0; font-family: 'Poppins', sans-serif; background: #f9fafb; }
 
   .menu-container {
     display: flex;
     min-height: 100vh;
-    background: #fff;
+    background: linear-gradient(135deg, #f0fdf4 0%, #f7fafc 100%);
   }
 
-  /* Sidebar Kiri */
   .sidebar {
-    width: 280px;
-    padding: 2rem 1.5rem;
-    border-right: 1px solid #eee;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow-y: auto;
-    flex-shrink: 0;
-  }
+  width: 280px;
+  padding: 2rem 1.5rem;
+  border-right: 1px solid #e6f4ea;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  background: white;
+  flex-shrink: 0;
+  box-shadow: 2px 0 12px rgba(0,0,0,0.05);
+  overflow: hidden; /* Tidak bisa scroll */
+}
 
-  .menu-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #2d2d2d;
-    margin-bottom: 2rem;
-  }
+  .menu-title { font-size: 2rem; font-weight: 800; color: #166534; margin-bottom: 2.5rem; text-align: center; }
 
-  .category-tabs-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-  }
+  .category-tabs-vertical { display: flex; flex-direction: column; gap: 0.75rem; }
 
   .tab-button-v {
-    padding: 1rem 1.5rem;
+    padding: 1.25rem 1.5rem;
     font-size: 1.1rem;
     font-weight: 600;
     text-align: left;
     border: none;
-    border-radius: 12px;
-    background-color: #f0f0f0;
-    color: #555;
+    border-radius: 16px;
+    background: #f0fdf4;
+    color: #4b5563;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .tab-button-v:hover {
-    background-color: #e0e0e0;
-  }
+  .tab-button-v:hover { background: #dcfce7; transform: translateX(4px); }
 
   .tab-button-v.active {
-    background-color: #22c55e;
+    background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    box-shadow: 0 8px 24px rgba(34,197,94,0.3);
+    transform: translateX(4px);
   }
 
-  /* Content Kanan */
-  .menu-content {
-    flex: 1;
-    padding: 2rem 5%;
+  .menu-content { flex: 1; padding: 2rem 3%; display: flex; flex-direction: column; }
+
+  .search-bar { max-width: 1400px; margin: 0 auto 2rem; padding: 0 2rem; }
+
+  .search-input-wrapper {
+    position: relative;
     display: flex;
-    flex-direction: column;
-  }
-
-  .menu-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 380px));
-    gap: 2rem;
-    max-width: 1600px;
-    margin: 0 auto;
-    flex-grow: 1;
-    justify-content: start;
-  }
-
-  .menu-card {
+    align-items: center;
     background: white;
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    padding: 0.75rem 1.25rem;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 2px solid #e6f4ea;
     transition: all 0.3s ease;
-    display: flex;
-    flex-direction: column;
-    max-width: 380px;
-    margin: 0 auto;
   }
 
-  .menu-card:hover {
-    transform: translateY(-10px);
-    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+  .search-input-wrapper:focus-within {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 4px rgba(34,197,94,0.15);
   }
 
-  .menu-image {
-    width: 100%;
-    height: 240px;
-    object-fit: cover;
-  }
+  .search-input-wrapper svg { color: #9ca3af; margin-right: 1rem; flex-shrink: 0; }
 
-  .card-content {
-    padding: 1.5rem;
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .item-name {
-    font-size: 1.4rem;
-    font-weight: 600;
+  .search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1.1rem;
     color: #2d2d2d;
-    margin: 0 0 0.75rem;
+    background: transparent;
   }
 
-  .item-desc {
-    font-size: 1rem;
-    color: #666;
-    margin: 0 0 auto;
-    line-height: 1.5;
+  .search-input::placeholder { color: #9ca3af; }
+
+  .clear-search-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #9ca3af;
+    cursor: pointer;
+    padding: 0.25rem;
+    margin-left: 0.5rem;
+    border-radius: 50%;
+    transition: all 0.2s ease;
   }
 
-  .card-footer {
+  .clear-search-btn:hover { background: #f3f4f6; color: #6b7280; }
+
+  .stats-bar { max-width: 1400px; margin: 0 auto 2rem; padding: 0 2rem; color: #6b7280; font-weight: 500; }
+
+  .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 380px)); gap: 2rem; max-width: 1400px; margin: 0 auto; justify-content: center; }
+
+  .menu-card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 32px rgba(0,0,0,0.08); border: 1px solid #e6f4ea; transition: all 0.4s; display: flex; flex-direction: column; }
+
+  .menu-card:hover { transform: translateY(-12px); box-shadow: 0 24px 48px rgba(34,197,94,0.15); border-color: #86efac; }
+
+  .image-wrapper { height: 240px; background: linear-gradient(135deg, #f7fafc 0%, #f0fdf4 100%); }
+
+  .menu-image { width: 100%; height: 100%; object-fit: cover; }
+
+  .placeholder-image { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+
+  .card-content { padding: 1.75rem; flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+
+  .item-name { font-size: 1.4rem; font-weight: 700; color: #166534; margin: 0; }
+
+  .type-badge { display: inline-block; background: #dcfce7; color: #166534; padding: 0.4rem 1rem; border-radius: 999px; font-size: 0.85rem; font-weight: 600; text-transform: capitalize; align-self: flex-start; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: auto; padding-top: 1rem; }
+
+  .price { font-size: 1.75rem; font-weight: 800; color: #16a34a; }
+
+  .add-button { width: 52px; height: 52px; border-radius: 50%; background: linear-gradient(135deg, #86efac 0%, #22c55e 100%); color: white; font-size: 1.75rem; font-weight: 700; border: none; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(34,197,94,0.3); }
+
+  .add-button:hover { background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%); transform: scale(1.1); box-shadow: 0 8px 20px rgba(34,197,94,0.4); }
+
+  /* Floating Cart Button */
+  .floating-cart-btn {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(34,197,94,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    transition: all 0.3s ease;
+  }
+
+  .floating-cart-btn:hover { transform: scale(1.1); }
+
+  .cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #ef4444;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 700;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Cart Popup */
+  .cart-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+
+  .cart-popup {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: white;
+    border-top-left-radius: 24px;
+    border-top-right-radius: 24px;
+    max-height: 80vh;
+    overflow-y: auto;
+    z-index: 1001;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.15);
+  }
+
+  .cart-header-popup {
+    padding: 1.5rem 2rem;
+    border-bottom: 1px solid #e6f4ea;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 1.5rem;
-  }
-
-  .price {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #22c55e;
-  }
-
-  .add-button {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background-color: #22c55e;
-    color: white;
-    font-size: 1.8rem;
-    font-weight: bold;
-    border: none;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .add-button:hover {
-    background-color: #16a34a;
-    transform: scale(1.15);
-  }
-
-  /* Pagination */
-  .pagination {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 3rem;
-    padding: 1rem 0;
-  }
-
-  .pagination-btn {
-    width: 44px;
-    height: 44px;
-    border: 2px solid #e0e0e0;
     background: white;
-    color: #666;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    position: sticky;
+    top: 0;
+  }
+
+  .cart-header-popup h2 { font-size: 1.5rem; font-weight: 700; color: #166534; margin: 0; }
+
+  .close-btn { background: none; border: none; font-size: 2rem; cursor: pointer; color: #6b7280; }
+
+  .cart-items { padding: 1rem 2rem; display: flex; flex-direction: column; gap: 1rem; }
+
+  .cart-item { display: flex; align-items: center; gap: 1rem; padding: 1rem 0; border-bottom: 1px solid #f0fdf4; }
+
+  .cart-item-image { width: 60px; height: 60px; object-fit: cover; border-radius: 12px; }
+
+  .cart-item-placeholder { width: 60px; height: 60px; background: #f3f4f6; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+
+  .cart-item-info h4 { margin: 0; font-size: 1.1rem; color: #2d2d2d; }
+
+  .cart-item-price { color: #16a34a; font-weight: 600; font-size: 0.95rem; }
+
+  .quantity-control { display: flex; align-items: center; gap: 1rem; margin-left: auto; }
+
+  .quantity-control button { width: 36px; height: 36px; border-radius: 50%; border: 2px solid #d1fae5; background: white; color: #166534; font-weight: bold; cursor: pointer; }
+
+  .quantity-control button:hover { background: #ecfdf5; }
+
+  .cart-total-popup {
+    padding: 1.5rem 2rem;
     display: flex;
-    align-items: center;
-    justify-content: center;
+    justify-content: space-between;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #166534;
+    border-top: 2px solid #e6f4ea;
+    background: #f8fafc;
   }
 
-  .pagination-btn:hover:not(.disabled) {
-    border-color: #22c55e;
-    color: #22c55e;
-    background-color: #f0fdf4;
-  }
+  .total-price { color: #16a34a; }
 
-  .pagination-btn.active {
-    border-color: #22c55e;
-    background-color: #22c55e;
+  .checkout-btn-popup {
+    width: calc(100% - 4rem);
+    margin: 1.5rem 2rem;
+    padding: 1.2rem;
+    background: linear-gradient(135deg, #86efac 0%, #22c55e 100%);
     color: white;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+    border: none;
+    border-radius: 16px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(34,197,94,0.3);
   }
 
-  .pagination-btn.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    color: #ccc;
-  }
+  .checkout-btn-popup:hover { background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%); }
 
-  .ellipsis {
-    color: #999;
-    font-size: 1.1rem;
-    padding: 0 1rem;
-  }
+  .pagination { display: flex; justify-content: center; align-items: center; gap: 0.75rem; margin: 4rem auto 2rem; flex-wrap: wrap; }
 
-  /* Responsive */
+  .pagination-btn { width: 48px; height: 48px; border: 2px solid #d1fae5; background: white; color: #166534; border-radius: 50%; cursor: pointer; font-weight: 600; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; }
+
+  .pagination-btn:hover:not(.disabled) { background: #ecfdf5; border-color: #86efac; transform: translateY(-2px); }
+
+  .pagination-btn.active { background: linear-gradient(135deg, #86efac 0%, #22c55e 100%); color: white; border: none; }
+
+  .pagination-btn.disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .ellipsis { color: #9ca3af; font-weight: 500; padding: 0 1rem; }
+
+  .empty-state { text-align: center; padding: 6rem 2rem; color: #6b7280; max-width: 400px; margin: 2rem auto; }
+
+  .empty-state h3 { color: #166534; font-size: 1.5rem; margin: 1.5rem 0 0.5rem; }
+
   @media (max-width: 992px) {
-    .menu-container {
-      flex-direction: column;
-    }
-    .sidebar {
-      width: 100%;
-      height: auto;
-      position: static;
-      border-right: none;
-      border-bottom: 1px solid #eee;
-      padding: 1.5rem 5%;
-    }
-    .category-tabs-vertical {
-      flex-direction: row;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    .tab-button-v {
-      padding: 0.8rem 1.8rem;
-      font-size: 1rem;
-    }
-    .menu-content {
-      padding: 2rem 5%;
-    }
+    .menu-container { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; position: static; border-right: none; border-bottom: 1px solid #e6f4ea; }
+    .category-tabs-vertical { flex-direction: row; flex-wrap: wrap; justify-content: center; gap: 1rem; }
   }
 
   @media (max-width: 768px) {
-    .menu-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 1.2rem;
-      justify-content: center;
-    }
-    .menu-card {
-      max-width: none;
-    }
-    .menu-image {
-      height: 160px;
-    }
-    .card-content {
-      padding: 1rem;
-    }
-    .item-name {
-      font-size: 1.1rem;
-      margin-bottom: 0.5rem;
-    }
-    .item-desc {
-      font-size: 0.9rem;
-      line-height: 1.3;
-      margin-bottom: 0.8rem;
-    }
-    .card-footer {
-      margin-top: 0.8rem;
-    }
-    .price {
-      font-size: 1.25rem;
-    }
-    .add-button {
-      width: 40px;
-      height: 40px;
-      font-size: 1.4rem;
-    }
-    .pagination {
-      margin-top: 2rem;
-      gap: 0.4rem;
-    }
-    .pagination-btn {
-      width: 36px;
-      height: 36px;
-      font-size: 0.9rem;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .menu-grid {
-      gap: 1rem;
-    }
-    .menu-image {
-      height: 150px;
-    }
-    .card-content {
-      padding: 0.9rem;
-    }
-    .item-name {
-      font-size: 1.05rem;
-    }
-    .price {
-      font-size: 1.2rem;
-    }
-    .add-button {
-      width: 38px;
-      height: 38px;
-    }
+    .floating-cart-btn { bottom: 20px; right: 20px; width: 56px; height: 56px; }
+    .cart-badge { width: 20px; height: 20px; font-size: 0.8rem; top: -6px; right: -6px; }
+    .menu-grid { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+    .image-wrapper { height: 180px; }
+    .price { font-size: 1.5rem; }
+    .add-button { width: 44px; height: 44px; font-size: 1.5rem; }
   }
 </style>
