@@ -38,18 +38,18 @@ export const actions: Actions = {
 				formIssues: form.error.issues
 			});
 		}
-
+		
 		const res = await fetch(`${PUBLIC_API_URL}/api/stuff`, {
-			method: 'PATCH',
+			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				...(token && { Authorization: `Bearer ${token}` })
 			},
 			body: JSON.stringify(form.data)
 		});
-
+		
 		const result: Response = await res.json();
-
+		
 		if (!res.ok || !result.success) {
 			return fail(res.status || 500, {
 				success: false,

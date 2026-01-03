@@ -113,7 +113,7 @@
 		</nav>
 
 		<div class="logout-section">
-			<form action="/admin/logout" method="post">
+			<form action="/" method="post">
 				<button
 					type="submit"
 					class="logout-button menu-item"
@@ -146,10 +146,20 @@
 	}
 
 	.admin-layout {
-		display: flex;
-		min-height: 100vh;
-		background-color: #f9fafb;
-	}
+  display: flex;
+  background-color: #f9fafb;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 280px;
+  padding: 2rem;
+  overflow-y: auto;
+  height: 100vh;
+  height: 100dvh;
+}
 
 	.sidebar {
 		width: 280px;
@@ -278,11 +288,6 @@
 		border-left: 4px solid #dc2626 !important;
 	}
 
-	.main-content {
-		flex: 1;
-		margin-left: 280px;
-		padding: 2rem;
-	}
 
 	@media (max-width: 1024px) {
 		.sidebar {
