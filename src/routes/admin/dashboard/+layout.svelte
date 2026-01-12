@@ -10,8 +10,17 @@
 	let openSubmenu = $state<string | null>(null);
 
 	const menuItems = [
-		{
-			title: 'Products',
+	{
+			title: 'Stuff Categories',
+			icon: `<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>`,
+			href: '/admin/dashboard/stuff-categories',
+			submenus: [
+				{ title: 'Add Stuff Category', href: '/admin/dashboard/stuff-categories/add' },
+				{ title: 'Stuff Category List', href: '/admin/dashboard/stuff-categories/list' }
+			]
+		},	
+	{
+			title: 'Stuff',
 			icon: `<path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>`,
 			href: '/admin/dashboard/products/showcase',
 			submenus: [
