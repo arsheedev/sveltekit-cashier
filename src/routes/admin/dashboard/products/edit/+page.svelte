@@ -23,7 +23,6 @@
 
   <div class="edit-card">
     <div class="edit-layout">
-      <!-- Kolom Kiri: Preview Gambar -->
       <div class="image-section">
         <h3 class="section-title">Product Image</h3>
         <div class="image-preview">
@@ -43,7 +42,6 @@
         <p class="image-hint">Upload a new image to replace the current one</p>
       </div>
 
-      <!-- Kolom Kanan: Form Edit -->
       <div class="form-section">
         <h3 class="section-title">Product Details</h3>
         <form method="post" enctype="multipart/form-data" class="edit-form">
@@ -98,7 +96,7 @@
           </div>
 
           <div class="form-actions">
-            <a href="/admin/dashboard/products" class="btn-cancel">Cancel</a>
+            <a href="admin/dashboard/products/showcase" class="btn-cancel">Cancel</a>
             <button type="submit" class="btn-save">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
