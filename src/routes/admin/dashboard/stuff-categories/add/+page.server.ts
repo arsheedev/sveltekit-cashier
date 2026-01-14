@@ -1,5 +1,3 @@
-// src/routes/admin/dashboard/categories/new/+page.server.ts
-
 import { PUBLIC_API_URL } from '$env/static/public';
 import TypeStuffSchema from '$lib/schemas/type-stuff-schema';
 import { fail, redirect, type Actions } from '@sveltejs/kit';
