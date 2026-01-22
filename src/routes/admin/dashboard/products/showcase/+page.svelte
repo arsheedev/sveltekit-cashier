@@ -27,17 +27,17 @@
     products.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
   );
 
+  // Fungsi untuk format price dari cents ke SGD
+  function formatPrice(cents: number): string {
+    return (cents / 100).toFixed(2);
+  }
+
   // Handle form success/error messages
   $effect(() => {
     if ($page.url.searchParams.get('success')) {
       showToast($page.url.searchParams.get('success') || 'Product deleted successfully', 'success');
       
-      // Force reload page dengan sedikit delay
       setTimeout(() => {
-        // Method 1: Gunakan location.reload()
-        // location.reload();
-        
-        // Method 2: Gunakan goto dengan force reload
         goto('/admin/dashboard/products/showcase', { 
           invalidateAll: true,
           replaceState: true,
@@ -81,92 +81,16 @@
     }
   }
 
-  // Custom enhance function untuk delete - VERSION 1: Force Reload
-  function deleteEnhance() {
-    isDeleting = true;
-    
-    return async ({ form, cancel, submitter }) => {
-      try {
-        // Submit form secara manual
-        const response = await fetch(form.action, {
-          method: form.method,
-          body: new FormData(form),
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-        
-        if (response.ok) {
-          // Parse response
-          const result = await response.json();
-          
-          if (result.type === 'redirect') {
-            // Jika redirect, gunakan location.href untuk force reload
-            window.location.href = result.location;
-            return;
-          }
-          
-          // Invalidate all data
-          await invalidateAll();
-          
-          // Force reload page
-          setTimeout(() => {
-            location.reload();
-          }, 500);
-          
-        } else {
-          // Handle error
-          console.error('Delete failed:', response.status);
-        }
-        
-      } catch (error) {
-        console.error('Delete enhance error:', error);
-      } finally {
-        isDeleting = false;
-        showDeleteModal = false;
-        productToDelete = null;
-      }
-      
-      // Prevent default SvelteKit behavior
-      cancel();
-    };
-  }
-
-  // VERSION 2: Simple enhance dengan reload
-  function simpleDeleteEnhance() {
-    isDeleting = true;
-    
-    return async ({ update }) => {
-      try {
-        // Jalankan update default
-        await update();
-        
-        // Tunggu sebentar lalu reload page
-        setTimeout(() => {
-          location.reload();
-        }, 1000);
-        
-      } catch (error) {
-        console.error('Delete error:', error);
-      } finally {
-        isDeleting = false;
-      }
-    };
-  }
-
-  // VERSION 3: Manual form submission dengan reload
   async function handleManualDelete() {
     if (!productToDelete) return;
     
     isDeleting = true;
     
     try {
-      // Buat form data
       const formData = new FormData();
       formData.append('id', productToDelete.id.toString());
       formData.append('action', 'delete');
       
-      // Kirim request
       const response = await fetch('?/delete', {
         method: 'POST',
         body: formData,
@@ -176,16 +100,13 @@
       });
       
       if (response.ok) {
-        // Show success toast
         showToast('Product deleted successfully', 'success');
         
-        // Tunggu sebentar, lalu reload
         setTimeout(() => {
           location.reload();
         }, 1500);
         
       } else {
-        // Show error toast
         const result = await response.json();
         showToast(result.message || 'Failed to delete product', 'error');
       }
@@ -197,14 +118,6 @@
       isDeleting = false;
       showDeleteModal = false;
       productToDelete = null;
-    }
-  }
-
-  // Function untuk handle submit dari modal - VERSION 4: Hybrid
-  function handleDeleteSubmit() {
-    if (productToDelete) {
-      // Gunakan manual delete
-      handleManualDelete();
     }
   }
 </script>
@@ -265,7 +178,8 @@
             <div class="product-type">
               <span class="type-badge">{product.type}</span>
             </div>
-            <p class="product-price">${product.price.toFixed(2)}</p>
+            <!-- HARGA YANG SUDAH DIKONVERSI DARI CENTS KE SGD -->
+            <p class="product-price">S$ {formatPrice(product.price)}</p>
           </div>
 
           <div class="card-actions">
@@ -394,7 +308,6 @@
 {/if}
 
 <style>
-  /* CSS tetap sama seperti sebelumnya */
   :global(body) { 
     margin: 0; 
     font-family: 'Inter', system-ui, -apple-system, sans-serif; 
@@ -516,10 +429,11 @@
   }
   
   .product-price { 
-    font-size: 24px; 
+    font-size: 28px; 
     font-weight: 800; 
     color: #10b981; 
     margin-top: auto; 
+    margin-bottom: 0;
   }
 
   .card-actions { 
@@ -589,6 +503,23 @@
   .empty-state p { 
     color: #059669; 
     font-size: 16px;
+  }
+  
+  .btn-primary {
+    display: inline-block;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    font-weight: 600;
+    border-radius: 16px;
+    text-decoration: none;
+    box-shadow: 0 12px 24px rgba(16, 185, 129, 0.3);
+    transition: all 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 36px rgba(16, 185, 129, 0.4);
   }
 
   .pagination { 
@@ -850,6 +781,39 @@
     
     .showcase-title {
       font-size: 32px;
+    }
+    
+    .product-price {
+      font-size: 24px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .showcase-container {
+      padding: 24px 16px;
+    }
+    
+    .modal-content {
+      padding: 24px;
+      width: 95%;
+    }
+    
+    .modal-actions {
+      flex-direction: column;
+    }
+    
+    .btn-cancel, .btn-delete-modal {
+      width: 100%;
+    }
+    
+    .toast {
+      top: 16px;
+      right: 16px;
+      left: 16px;
+    }
+    
+    .toast-content {
+      padding: 12px 16px;
     }
   }
 </style>

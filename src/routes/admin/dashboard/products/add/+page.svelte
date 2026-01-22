@@ -163,7 +163,10 @@
 </div>
 
           <div class="field-group">
-            <label for="price">Price (SGD) <span class="required">*</span></label>
+             <label for="price">
+              Price <span class="required">*</span>
+              <span class="input-note">(Enter cents, e.g., 120 for 120 cents = S$ 1.20)</span>
+            </label>
             <div class="input-with-prefix">
               <span class="prefix">S$</span>
               <input 

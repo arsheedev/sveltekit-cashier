@@ -28,7 +28,7 @@
 		},
 		{
 			title: 'Products',
-			icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org2000/svg">
+			icon: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
 				<rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
 				<path d="M3 9H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 				<circle cx="8" cy="6" r="1" fill="currentColor"/>
@@ -183,8 +183,10 @@
 		</div>
 	</aside>
 
-	<main class="main-content {isCollapsed ? 'collapsed' : ''}">
-		{@render children()}
+	<main class="main-content-wrapper {isCollapsed ? 'collapsed' : ''}">
+		<div class="main-content">
+			{@render children()}
+		</div>
 	</main>
 </div>
 
@@ -196,12 +198,14 @@
 		padding: 0;
 		font-family: 'Inter', system-ui, -apple-system, sans-serif;
 		background: linear-gradient(135deg, #f0fdf4 0%, #f7fafc 100%);
+		overflow: hidden; /* Prevent body scroll */
 	}
 
 	.admin-layout {
 		display: flex;
 		min-height: 100vh;
 		background: linear-gradient(135deg, #f0fdf4 0%, #f7fafc 100%);
+		overflow: hidden; /* Prevent layout scroll */
 	}
 
 	.sidebar {
@@ -480,18 +484,51 @@
 		padding: 16px;
 	}
 
-	.main-content {
+	/* MAIN CONTENT FIXED FOR SCROLLING */
+	.main-content-wrapper {
 		flex: 1;
 		margin-left: 280px;
-		padding: 24px;
 		transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		overflow: hidden; /* Hide overflow from wrapper */
 	}
 
-	.main-content.collapsed {
+	.main-content-wrapper.collapsed {
 		margin-left: 80px;
 	}
 
+	.main-content {
+		flex: 1;
+		padding: 24px;
+		overflow-y: auto; /* Enable scrolling on content only */
+		overflow-x: hidden;
+		height: 100vh; /* Full viewport height */
+		max-height: 100vh; /* Prevent exceeding viewport */
+		-webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+	}
+
+	/* Custom scrollbar for main content */
+	.main-content::-webkit-scrollbar {
+		width: 8px;
+	}
+
+	.main-content::-webkit-scrollbar-track {
+		background: rgba(16, 185, 129, 0.05);
+		border-radius: 10px;
+	}
+
+	.main-content::-webkit-scrollbar-thumb {
+		background: linear-gradient(135deg, #86efac, #10b981);
+		border-radius: 10px;
+	}
+
+	.main-content::-webkit-scrollbar-thumb:hover {
+		background: linear-gradient(135deg, #10b981, #059669);
+	}
+
+	/* Tooltip for collapsed sidebar */
 	.menu-item[title]:hover::after,
 	.logout-button[title]:hover::after {
 		content: attr(title);
@@ -533,11 +570,11 @@
 			width: 80px;
 		}
 		
-		.main-content {
+		.main-content-wrapper {
 			margin-left: 0;
 		}
 		
-		.main-content.collapsed {
+		.main-content-wrapper.collapsed {
 			margin-left: 80px;
 		}
 	}
@@ -553,11 +590,16 @@
 			width: 280px;
 		}
 		
-		.main-content.collapsed {
+		.main-content-wrapper.collapsed {
 			margin-left: 0;
+		}
+
+		.main-content {
+			padding: 16px;
 		}
 	}
 
+	/* Custom scrollbar for sidebar */
 	.sidebar::-webkit-scrollbar {
 		width: 6px;
 	}
@@ -574,5 +616,24 @@
 
 	.sidebar::-webkit-scrollbar-thumb:hover {
 		background: linear-gradient(135deg, #10b981, #059669);
+	}
+
+	/* Mobile responsiveness */
+	@media (max-width: 480px) {
+		.main-content {
+			padding: 12px;
+		}
+		
+		.sidebar {
+			width: 260px;
+		}
+		
+		.logo-title {
+			font-size: 18px;
+		}
+		
+		.logo-subtitle {
+			font-size: 12px;
+		}
 	}
 </style>
